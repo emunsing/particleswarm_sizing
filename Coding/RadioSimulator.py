@@ -31,6 +31,14 @@ Uses:
        myRadioSimulator.simulate(initVariables,stopOnError=False,returnDf=False)
 - Simulation and calculate cost (infinite cost if infeasible): 
        myRadioSimulator.computeCost(initVariables)
+
+Example use: 
+
+import RadioSimulator
+myRadioSimulator = RadioSimulator.RadioSimulator(radioFile = '../Data/PowerMEMS_Sample_Data_em_20160707.csv')
+initVariables = {'TEGserial':5, 'TEGparallel':15, 'batts':5, 'caps':20, 'SOC':0.5, 'V_b':2, 'V_c':2}
+myRadioSimulator.computeCost(initVariables)  # Compute the weighted cost
+
 """
 
 class RadioSimulator:
@@ -133,13 +141,15 @@ class RadioSimulator:
         capCost  = 1
         battCost = 1
         
-        feasible = self.simulate(initVariables,stopOnError=False,returnDf=False)
-        
+        # feasible = self.simulate(initVariables,stopOnError=False,returnDf=False)
+        (feasible,df,failStep) = self.simulate(initVariables,stopOnError=True,returnDf=True)
+
         if feasible:
             cost = initVariables['TEGserial']* initVariables['TEGparallel'] * TEGcost + \
                     capCost * initVariables['caps'] + battCost * initVariables['batts']
         else:
-            cost = float('inf')
+            cost = (df.shape[0]-failStep) * 100
+            # cost = float('inf')
             
         return cost
         
@@ -205,7 +215,7 @@ class RadioSimulator:
             for j in range(0,len(x)):
                 df.loc[i, self.variables[j]] = x[j]
 
-            if ( not(self.isFeasible(df.loc[i,:], self.constraints, self.variables)) & feasible):
+            if ( not(self.isFeasible( df.loc[i,:], self.constraints, self.variables)) & feasible):
                 feasible = False  # This will only be lowered once
                 failStep = i
 
