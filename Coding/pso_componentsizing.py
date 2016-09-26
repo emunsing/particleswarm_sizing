@@ -116,11 +116,11 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
         # Map: Parallelize computation of the new position for each particle
         # - Return a tuple with (error, particle)
 
-        # mapResults = myPool.map_async(stepForward,swarm)
-        # (costs, swarm) = tuple(zip(*mapResults.get() ))
+        mapResults = myPool.map_async(stepForward,swarm)
+        (costs, swarm) = tuple(zip(*mapResults.get() ))
         
-        mapResults = [stepForward(p) for p in swarm]
-        (costs, swarm) = tuple(zip(*mapResults))
+        # mapResults = [stepForward(p) for p in swarm]
+        # (costs, swarm) = tuple(zip(*mapResults))
 
         # Reduce:
         #  - Compute which error is minimal
