@@ -45,9 +45,9 @@ class Particle:
 def evaluateCost(myParticle):
     # Run the simulator and compute the cost for the particle's current position
     a = myParticle.position
-    initVariables = {'TEGserial':a[0], 'TEGparallel':a[1], 'batts':a[2], 'caps':a[3], 'SOC':a[4], 'V_b':a[5], 'V_c':a[6]}
-    return myParticle.sim.computeCost(initVariables)
-        
+    initVariables = {'TEGparallel':a[0], 'TEGserial':a[1], 'batts':a[2], 'caps':a[3], 'SOC':a[4], 'V_b':a[5], 'V_c':a[6]}
+    sys.stdout.flush()
+       
 def stepForward(myParticle):
     ## Initialization
     w = 0.729    # inertia
@@ -109,7 +109,7 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
     ## Done with initialization of the swarm- now move on to the actual work!
         
     rnd = random.Random(0)
-    myPool = Pool()
+    myPool = Pool(1)
     epoch = 0
     while epoch < max_epochs:
 
@@ -141,7 +141,7 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
                 swarm[i].best_swarm_pos = best_swarm_pos
 
         epoch += 1
-        if epoch % 100 == 0:
+        if epoch % 10 == 0:
         	epochStr = "Epoch = %s with best error of %.1f at %s"%(str(epoch),best_swarm_cost, datetime.datetime.now())
         	print(epochStr)
         	sys.stderr.write(epochStr+'\n')

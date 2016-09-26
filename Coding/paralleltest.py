@@ -2,14 +2,14 @@ import time
 from multiprocessing import Pool
 
 def sleepawhile(x):
-	time.sleep(1)
+	time.sleep(0.01)
 	return x*x
 
-myPool = Pool()
+myPool = Pool(1)
 
 starttime = time.time()
 
-i = range(5)
+i = range(100)
 results = myPool.map_async(sleepawhile,i)
-print results.get()
+results.get()
 print("Finished in %.2f seconds"%(time.time() - starttime) )
