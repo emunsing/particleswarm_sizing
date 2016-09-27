@@ -150,7 +150,7 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
     return best_swarm_pos
 
 ##### MAIN EXECUTION FLOW ####
-max_epochs = 3
+max_epochs = 1000
 
 #  x =           [  p,   s ,  b ,   c, SOC, V_b, V_c]
 minx = np.array( [  1,   1 ,  0 ,   0, 0.2,  0 ,  0 ])
