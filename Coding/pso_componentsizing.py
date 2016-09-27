@@ -12,7 +12,7 @@ try:
 	os.remove(errFile)
 except OSError:
 	pass
-sys.stderr = open(errFile, 'w')
+# sys.stderr = open(errFile, 'w')
 
 class Particle:
     def __init__(self, minx, maxx, seed, initPosition=None, initCost = None):
@@ -46,7 +46,7 @@ def evaluateCost(myParticle):
     # Run the simulator and compute the cost for the particle's current position
     a = myParticle.position
     initVariables = {'TEGparallel':a[0], 'TEGserial':a[1], 'batts':a[2], 'caps':a[3], 'SOC':a[4], 'V_b':a[5], 'V_c':a[6]}
-    sys.stdout.flush()
+    return myParticle.sim.computeCost(initVariables)
        
 def stepForward(myParticle):
     ## Initialization
@@ -141,16 +141,15 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
                 swarm[i].best_swarm_pos = best_swarm_pos
 
         epoch += 1
-        if epoch % 10 == 0:
-        	epochStr = "Epoch = %s with best error of %.1f at %s"%(str(epoch),best_swarm_cost, datetime.datetime.now())
-        	print(epochStr)
-        	sys.stderr.write(epochStr+'\n')
-        	pickle.dump(swarm, open( "../Results/swarm.pkl", "wb" ))
+        if epoch % 5 == 0:
+            epochStr = "Epoch = %s with best error of %.1f at %s"%(str(epoch),best_swarm_cost, datetime.datetime.now())
+            sys.stderr.write(epochStr+'\n')
+            pickle.dump(swarm, open( "../Results/swarm.pkl", "wb" ))
     
     return best_swarm_pos
 
 ##### MAIN EXECUTION FLOW ####
-max_epochs = 1000
+max_epochs = 11
 
 #  x =           [  p,   s ,  b ,   c, SOC, V_b, V_c]
 minx = np.array( [  1,   1 ,  0 ,   0, 0.2,  0 ,  0 ])
@@ -160,8 +159,8 @@ maxx = np.array( [100,  100, 100, 100, 0.8, 2.6, 3.6])
 gridSearchResults = pd.read_csv("../Results/gridSearchAllResults_2016-07-10_v2.csv", index_col=0)
 initPoints = gridSearchResults[gridSearchResults['cost']<float('inf')].sort_values(by='cost')
 
-#num_particles = 10  # Comment this out to use all points in initPoints
-num_particles = None
+num_particles = 20  # Comment this out to use all points in initPoints
+# num_particles = None
 
 initVariables = initPoints[['TEGparallel','TEGserial','batts','caps','SOC','V_b','V_c']].values  # Get the values in the right order
 initCosts = initPoints['cost'].values
