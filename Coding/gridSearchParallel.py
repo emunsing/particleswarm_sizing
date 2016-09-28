@@ -87,10 +87,8 @@ else:
 
 
 batches = 20
-# batchSize = int(len(scenarioVarList)/batches)
-batchSize = 4
-# batchSize = 1000
-startAt = len(scenarioVarList) - 20
+batchSize = int(len(scenarioVarList)/batches)
+startAt = 0
 
 ## Block the problem into batches, so that we can save progress between batches
 for j in np.arange(startAt,len(scenarioVarList),batchSize):
