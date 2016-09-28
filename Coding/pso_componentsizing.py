@@ -12,7 +12,7 @@ try:
 	os.remove(errFile)
 except OSError:
 	pass
-# sys.stderr = open(errFile, 'w')
+sys.stderr = open(errFile, 'w')
 
 class Particle:
     def __init__(self, minx, maxx, seed, initPosition=None, initCost = None):
@@ -109,7 +109,7 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
     ## Done with initialization of the swarm- now move on to the actual work!
         
     rnd = random.Random(0)
-    myPool = Pool()
+    myPool = Pool(10)
     epoch = 0
     while epoch < max_epochs:
 
@@ -149,7 +149,7 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
     return best_swarm_pos
 
 ##### MAIN EXECUTION FLOW ####
-max_epochs = 11
+max_epochs = 1000
 
 #  x =           [  p,   s ,  b ,   c, SOC, V_b, V_c]
 minx = np.array( [  1,   1 ,  0 ,   0, 0.2,  0 ,  0 ])
@@ -160,7 +160,7 @@ gridSearchResults = pd.read_csv("../Results/gridSearchAllResults_2016-07-10_v2.c
 initPoints = gridSearchResults[gridSearchResults['cost']<float('inf')].sort_values(by='cost')
 
 num_particles = 20  # Comment this out to use all points in initPoints
-# num_particles = None
+num_particles = None
 
 initVariables = initPoints[['TEGparallel','TEGserial','batts','caps','SOC','V_b','V_c']].values  # Get the values in the right order
 initCosts = initPoints['cost'].values
