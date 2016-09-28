@@ -154,7 +154,6 @@ max_epochs = 11
 #  x =           [  p,   s ,  b ,   c, SOC, V_b, V_c]
 minx = np.array( [  1,   1 ,  0 ,   0, 0.2,  0 ,  0 ])
 maxx = np.array( [100,  100, 100, 100, 0.8, 2.6, 3.6])
-
 # Load a set of points with which to initialize some of the particles.  These will have coordinates in a Numpy array.
 gridSearchResults = pd.read_csv("../Results/gridSearchAllResults_2016-07-10_v2.csv", index_col=0)
 initPoints = gridSearchResults[gridSearchResults['cost']<float('inf')].sort_values(by='cost')

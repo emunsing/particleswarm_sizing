@@ -91,14 +91,14 @@ class RadioSimulator:
         
         ## TEG
         # TEG Current output function: -1.7I_t - 0.032*V + 0.000136*T = 0
-        # or for a given temperature difference dK,  I_t = T_0 - zeta * V(t)
+        # or for a given temperature difference dK,  I_t = T_0*dK - zeta * V(t)
         # where
         # This is for a device with 50 couples 
-        #  T_0 = 0.000136 / 1.7 * dK
+        #  T_0 = 0.000136 / 1.7
         #  zeta = 0.032 / 1.7
         # Set both parameters to 0 for testing w/o TEG
         dK = 20      # Temperature difference, K
-        self.T_0 =  0.000136 / 1.7 * dK  #TEG current intercept on I/V plot; T_0=0.0015 for dK=20
+        self.T_0 =  0.000136 / 1.7 # * dK  #TEG current intercept on I/V plot; T_0=0.0015 for dK=20
         zeta = 0.032 / 1.7  # slope of TEG current output sensitivity to voltage
 
         ## Capacitor
@@ -184,8 +184,8 @@ class RadioSimulator:
         for i in df.index[1:]:
             
             dt = df.loc[i,'dt']
-            #                   I_r(t),       T_0  , 0, 0, 0, 0,    V_0  , 0,    -SOC(k-1)      ,    -V_b(k-1)      ,      -V_c(k-1)
-            b = np.array([df.loc[i,'I_r'], self.T_0, 0, 0, 0, 0, self.V_0, 0, -df.loc[i-1,'SOC'], -df.loc[i-1,'V_b'], -df.loc[i-1,'V_c'] ])
+            #                   I_r(t),        T_0*dK             , 0, 0, 0, 0,    V_0  , 0,    -SOC(k-1)      ,    -V_b(k-1)      ,      -V_c(k-1)
+            b = np.array([df.loc[i,'I_r'], self.T_0*df.loc[i,'dK'], 0, 0, 0, 0, self.V_0, 0, -df.loc[i-1,'SOC'], -df.loc[i-1,'V_b'], -df.loc[i-1,'V_c'] ])
 
             # Deal with non-constant time steps 
             A_temp = A.copy()
@@ -222,6 +222,16 @@ class RadioSimulator:
             if ( (not feasible) & stopOnError ):  # If it is not feasible and we are not ignoring constraints, 
                 break
         
+        if feasible:  # If we think the result is feasible, need to check whether the end state and start state are close to each other
+            tol = 0.05  # Relative tolerance for landing within the initial state
+            dSOC = (initVariables['SOC'] - df.loc[i,'SOC'])/initVariables['SOC']
+            dV_b = (initVariables['V_b'] - df.loc[i,'V_b'])/initVariables['V_b']
+            dV_c = (initVariables['V_c'] - df.loc[i,'V_c'])/initVariables['V_c']
+
+            if (abs(dSOC) > tol) | (abs(dV_b) > tol) | (abs(dV_c) > tol):   # if we violate the tolerance
+                feasible = False
+                failStep = i
+
         if returnDf:
             return (feasible,df,failStep)
         else:
