@@ -117,15 +117,17 @@ class RadioSimulator:
         # Desire a roughly 2V to 3.6V range over SOC = 0.2 to SOC=1
         # (3.6-2)/(1-0.2) = 2 = slope
         # Intercept = 1.6; slope = 2V/(unit SOC)
-        # OCV at 50% charge: 2.6
+        # OCV at 20% charge: 2   V 
+        # OCV at 50% charge: 2.6 V
+        # OCV at 80% charge: 3.2 V
         self.V_0  = 1.6  # Intercept in linear battery model, OCV = nu * SOC + V_0
         nu   = 2  #  Slope of linear battery model
         self.eff =  0.9**0.5 # One-way battery efficiency
         
-        #  Creating the system's matrix                                                                              .       .       .
+        #  Creating the system's matrix                                                .       .       .
         #               I_T(t), I_B(t), I_C(t), V(t), V_b(t), V_c(t), OCV(t), SOC(t), V_b(t), V_c(t), SOC(t)
         A = np.array( [ [TEGp,  batts , caps  ,  0  ,   0   ,   0   ,   0   ,   0   ,   0   ,   0   ,  0 ],  #0  = I_R Circuit KCL  - GOOD
-                        [ 1   ,  0    ,   0, zeta/TEGs, 0   ,   0   ,   0   ,   0   ,   0   ,   0   ,  0 ],  #1  = T_0 TEG - GOOD
+                        [ 1   ,  0    ,   0, zeta/TEGs, 0   ,   0   ,   0   ,   0   ,   0   ,   0   ,  0 ],  #1  = T_0*dK TEG - GOOD
                         [ 0   ,  0    , R_c1  ,  1  ,   0   ,  -1   ,   0   ,   0   ,   0   ,   0   ,  0 ],  #2  = 0   Cap KVL - GOOD
                         [ 0   ,  0    , 1/C_c ,  0  ,   0, 1/(C_c*R_c2),0   ,   0   ,   0   ,   1   ,  0 ],  #3  = 0   Cap KCL - GOOD
                         [ 0   ,  R_b1 ,   0   ,  1  ,   -1  ,   0   ,  -1   ,   0   ,   0   ,   0   ,  0 ],  #4  = 0   Batt KVL - GOOD
@@ -141,18 +143,23 @@ class RadioSimulator:
         TEGcost  = 1
         capCost  = 1
         battCost = 1
+        penalty  = 0
+        cost = initVariables['TEGserial']*initVariables['TEGparallel']*TEGcost + \
+                capCost*initVariables['caps'] + battCost*initVariables['batts']
         
         # feasible = self.simulate(initVariables,stopOnError=False,returnDf=False)
         (feasible,df,failStep) = self.simulate(initVariables,stopOnError=True,returnDf=True)
 
-        if feasible:
-            cost = initVariables['TEGserial']* initVariables['TEGparallel'] * TEGcost + \
-                    capCost * initVariables['caps'] + battCost * initVariables['batts']
-        else:
-            cost = (10 + df.shape[0]-failStep) * 100
-            # cost = float('inf')
-            
-        return cost
+        if not(feasible):
+            # Want the penalty to include both a penalty for the number of time steps which failed, and a penalty for the deviation between initial and final states
+            dSOC = (initVariables['SOC'] - df.loc[failStep,'SOC'])/ self.constraints.loc['max','SOC']
+            dV_b = (initVariables['V_b'] - df.loc[failStep,'V_b'])/ self.constraints.loc['min','V']
+            dV_c = (initVariables['V_c'] - df.loc[failStep,'V_c'])/ self.constraints.loc['min','V']
+            deviationPenalty = ( abs(dSOC) + abs(dV_b) + abs(dV_c) ) * 10
+            timePenalty = (df.shape[0]-failStep) * 100
+            penalty = deviationPenalty + timePenalty
+
+        return cost + penalty
         
     def simulate(self, initVariables=None,stopOnError=True,returnDf=False):
         #  expect initVariables as a dictionary with terms:
@@ -182,6 +189,10 @@ class RadioSimulator:
         feasible = True
         failStep = 1
 
+        #  x[0],  x[1]  ,  x[2] , x[3], x[4]  , x[5]  ,  x[6] ,  x[7] ,  x[8] ,   x[9]  ,  x[10]
+        # I_T(t), I_B(t), I_C(t), V(t), V_b(t), V_c(t), OCV(t), SOC(t), dV_b(t), dV_c(t), dSOC(t)
+
+
         for i in df.index[1:]:
             
             dt = df.loc[i,'dt']
@@ -196,7 +207,19 @@ class RadioSimulator:
 
             x = np.linalg.solve(A_temp,b)  # Equivalent to matlab A \ b  solves Ax=B for x
 
-            # Integrating charge inefficiency: Propose to solve in two steps:
+            ## ENSURING I_T IS POSITIVE
+            # Check whether the initial solve resulted in a negative value for I_T
+            # If so, change the I_t constraint to be I_t=0 and re-solve
+            if x[0] < 0:
+                # TEG current is negative. Constrain TEG current to be 0 and re-solve.
+                A_temp = A_temp.copy()
+                # Replace this: [ 1   ,  0    ,   0, zeta/TEGs, 0   ,   0   ,   0   ,   0   ,   0   ,   0   ,  0 ], = T_0*dK
+                # With this:    [ 1   ,  0    ,   0,     0    , 0   ,   0   ,   0   ,   0   ,   0   ,   0   ,  0 ], = 0
+                A_temp[1,:] =   [ 1   ,  0    ,   0,     0    , 0   ,   0   ,   0   ,   0   ,   0   ,   0   ,  0 ]  # = 0 TEG
+                b[1] = 0
+                x = np.linalg.solve(A_temp, b)
+
+            # INTEGRATING CHARGE INTEFFICIENCY: Propose to solve in two steps:
             # - Solve 100% efficient problem, and see whether charge flows into or out of battery
             #   - If dSOC >(0+tol), re-solve with charging inefficiency
             #   - If dSOC <(0-tol), re-solve with charging inefficency 
@@ -213,10 +236,10 @@ class RadioSimulator:
                 A_temp[7,1] = A_temp[7,1]/self.eff  # Redefine 1/Q to be 1/(Q*eff)
                 x = np.linalg.solve(A_temp,b)  # Equivalent to matlab A \ b  solves Ax=B for x
 
-            for j in range(0,len(x)):  # Transfer these to the 
+            for j in range(0,len(x)):  # Transfer these to the matrix
                 df.loc[i, self.variables[j]] = x[j]
 
-            if ( not(self.isFeasible( df.loc[i,:], self.constraints, self.variables)) & feasible):
+            if ( feasible & (not self.isFeasible( df.loc[i,:], self.constraints, self.variables))  ):  # If this was previously feasible, but is now infeasible:
                 feasible = False  # This will only be lowered once
                 failStep = i
 
@@ -224,14 +247,14 @@ class RadioSimulator:
                 break
         
         if feasible:  # If we think the result is feasible, need to check whether the end state and start state are close to each other
-            tol = 0.05  # Relative tolerance for landing within the initial state
-            dSOC = (initVariables['SOC'] - df.loc[i,'SOC'])/initVariables['SOC']
-            dV_b = (initVariables['V_b'] - df.loc[i,'V_b'])/initVariables['V_b']
-            dV_c = (initVariables['V_c'] - df.loc[i,'V_c'])/initVariables['V_c']
+            tol = 0.05  # Relative tolerance for landing within the initial state. Note that this is done relative to the maximum for that constraint, not the 
+            dSOC = (initVariables['SOC'] - df.loc[i,'SOC'])/self.constraints.loc['max','SOC']  # Each of these will be a scalar between 0-1, the proportion the system is off at the end
+            dV_b = (initVariables['V_b'] - df.loc[i,'V_b'])/self.constraints.loc['min','V']
+            dV_c = (initVariables['V_c'] - df.loc[i,'V_c'])/self.constraints.loc['min','V']
 
-            if (abs(dSOC) > tol) | (abs(dV_b) > tol) | (abs(dV_c) > tol):   # if we violate the tolerance
+            if (abs(dSOC) > tol) | (abs(dV_b) > tol) | (abs(dV_c) > tol):   # if we violate the tolerance for ending at the same initial conditions as we started, 
                 feasible = False
-                failStep = i
+                failStep = i       # This will be infeasible, but will be noted as failing on the last step
 
         if returnDf:
             return (feasible,df,failStep)

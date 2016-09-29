@@ -1,4 +1,5 @@
 import sys, time, copy, os, random, math, pickle, datetime
+import multiprocessing
 from multiprocessing import Pool
 
 import numpy as np
@@ -109,7 +110,12 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
     ## Done with initialization of the swarm- now move on to the actual work!
         
     rnd = random.Random(0)
-    myPool = Pool(10)
+    
+    if multiprocessing.cpu_count() <= 10:
+        myPool = Pool()
+    else:
+        myPool = Pool(10)  # Don't overrun bGrid2
+
     epoch = 0
     while epoch < max_epochs:
 
@@ -155,11 +161,11 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
 ##### MAIN EXECUTION FLOW ####
 max_epochs = 1000
 
-#  x =           [  p,   s ,  b ,   c, SOC, V_b, V_c]
-minx = np.array( [  1,   1 ,  0 ,   0, 0.2,  0 ,  0 ])
-maxx = np.array( [100,  100, 100, 100, 0.8, 2.6, 3.6])
+#  x =           [  p,  s ,  b ,   c, SOC, V_b, V_c]
+minx = np.array( [0.1, 0.1,  0 ,   0, 0.2,  0 ,  0 ])
+maxx = np.array( [100, 100, 100, 100, 0.8, 1.6, 3.6])
 # Load a set of points with which to initialize some of the particles.  These will have coordinates in a Numpy array.
-gridSearchResults = pd.read_csv("../Results/gridSearchAllResults_2016-09-28_13_56.csv", index_col=0)
+gridSearchResults = pd.read_csv("../Results/gridSearchBestResultsSparse_2016-09-28.csv", index_col=0)
 initPoints = gridSearchResults.sort_values(by='cost',ascending=True)
 
 num_particles = 300  # Comment this out to use all points in initPoints

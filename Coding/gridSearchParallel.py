@@ -1,6 +1,9 @@
 import RadioSimulator
 import datetime
 import sys, os, time, copy
+import itertools
+import multiprocessing
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
@@ -14,21 +17,21 @@ except OSError:
 sys.stderr = open(errFile, 'w')
 
 ## Define the grid
-TEGserialSeries   = np.arange(1,50,5)
-TEGparallelSeries = np.arange(1,30,5)
-battSeries        = np.arange(1,30,3)
-capSeries         = np.arange(1,30,3)
+TEGserialSeries   = np.arange(1,51,5)
+TEGparallelSeries = np.arange(1,31,5)
+battSeries        = np.arange(1,30,5)
+capSeries         = np.arange(1,30,5)
 SOCseries         = np.arange(0.2,0.81,0.2)
-V_bSeries         = np.arange(0, 1.9, 0.3)
+V_bSeries         = np.arange(0, 1.6, 0.3)
 V_cSeries         = np.arange(1.8, 3.4, 0.3)
 
-# TEGserialSeries   = [25]
-# TEGparallelSeries = [5]
-# battSeries        = np.arange(5,26,10)
-# capSeries         = np.arange(5,26,10)
-# SOCseries         = [0.4] #[0.2,0.4,0.5]
-# V_bSeries         = np.arange(0,0.9,0.4)
-# V_cSeries         = [2]
+
+varList = [TEGserialSeries,TEGparallelSeries, battSeries, capSeries, SOCseries, V_bSeries, V_cSeries]
+scenarioVarList = list(itertools.product(*varList) )   # Create a list of all scenario combinations
+
+#  x =           [  p,  s ,  b ,   c, SOC, V_b, V_c]
+minx = np.array( [0.1, 0.1,  0 ,   0, 0.2,  0 ,  0 ])
+maxx = np.array( [100, 100, 100, 100, 0.8, 1.6, 3.6])
 
 mySim = RadioSimulator.RadioSimulator(radioFile = '../Data/PowerMEMS_Sample_Data_em_20160928.csv')
 # mySim = RadioSimulator.RadioSimulator(radioFile = '../Data/50step_downsampled_toy.csv')
@@ -36,10 +39,6 @@ resultfile = '../Results/gridSearchAllResults_'+datetime.datetime.now().strftime
 
 
 #### Parallelized Grid Search ####
-import itertools
-import multiprocessing
-from multiprocessing import Pool
-
 
 ## The following section preps a list of scenarios for a parallelized grid search. 
 #    This could be replaced by nested loops if parallelization is not desired.
@@ -63,10 +62,6 @@ def returnSimCost(initVars):
 	mySim = RadioSimulator.RadioSimulator(radioFile = '../Data/PowerMEMS_Sample_Data_em_20160928.csv')
 	return mySim.computeCost(initVars)
 
-
-varList = [TEGserialSeries,TEGparallelSeries, battSeries, capSeries, SOCseries, V_bSeries, V_cSeries]
-
-scenarioVarList = list(itertools.product(*varList) )   # Create a list of all scenario combinations
 scenarioDictList = [tupleToDict(myTuple) for myTuple in scenarioVarList ]
 
 # scenarioList = [tupleToDict(myTuple) for myTuple in scenarioList]  # Pack them each into dictionaries
@@ -83,12 +78,13 @@ success = pd.DataFrame()
 if multiprocessing.cpu_count() <= 10:
 	myPool = Pool()
 else:
-	myPool = Pool(10)  # Don't overrun bGrid2
+	myPool = Pool(6)  # Don't overrun bGrid2
 
 
 batches = 20
-batchSize = int(len(scenarioVarList)/batches)
 startAt = 0
+batchSize = (len(scenarioVarList) - startAt) /batches
+batchSize = int(batchSize)
 
 ## Block the problem into batches, so that we can save progress between batches
 for j in np.arange(startAt,len(scenarioVarList),batchSize):
