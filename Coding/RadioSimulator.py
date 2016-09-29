@@ -100,6 +100,7 @@ class RadioSimulator:
         dK = 20      # Temperature difference, K
         self.T_0 =  0.000136 / 1.7 # * dK  #TEG current intercept on I/V plot; T_0=0.0015 for dK=20
         zeta = 0.032 / 1.7  # slope of TEG current output sensitivity to voltage
+        # Need to ensure that the TEG current is greater or equal to 0
 
         ## Capacitor
         R_c1 = 40     # Series resistance of capacitor [Ohms]
@@ -112,13 +113,13 @@ class RadioSimulator:
         C_b  = 1e-3   # Battery internal capacitance [Farads]
         Q    = 1.8   # Battery capacity [Coulombs] - based on 0.5 mAh/cm^2 from Winslow 2013. 1mAh = 3.6C
 
-        ## OCV model
-        # Desire a roughly 1V to 3.4V range over SOC = 0.2 to SOC=1
-        # (3.4-1)/(1-0.2) = 3 = slope
-        # Intercept = 1; slope = 2.75V
-        # OCV at 50% charge: 2.375
-        self.V_0  = 1  # Intercept in linear battery model, OCV = nu * SOC + V_0
-        nu   = 2.5  #  Slope of linear battery model
+        ## OCV model (This describes two batteries in series - considered as one)
+        # Desire a roughly 2V to 3.6V range over SOC = 0.2 to SOC=1
+        # (3.6-2)/(1-0.2) = 2 = slope
+        # Intercept = 1.6; slope = 2V/(unit SOC)
+        # OCV at 50% charge: 2.6
+        self.V_0  = 1.6  # Intercept in linear battery model, OCV = nu * SOC + V_0
+        nu   = 2  #  Slope of linear battery model
         self.eff =  0.9**0.5 # One-way battery efficiency
         
         #  Creating the system's matrix                                                                              .       .       .
@@ -212,7 +213,7 @@ class RadioSimulator:
                 A_temp[7,1] = A_temp[7,1]/self.eff  # Redefine 1/Q to be 1/(Q*eff)
                 x = np.linalg.solve(A_temp,b)  # Equivalent to matlab A \ b  solves Ax=B for x
 
-            for j in range(0,len(x)):
+            for j in range(0,len(x)):  # Transfer these to the 
                 df.loc[i, self.variables[j]] = x[j]
 
             if ( not(self.isFeasible( df.loc[i,:], self.constraints, self.variables)) & feasible):
