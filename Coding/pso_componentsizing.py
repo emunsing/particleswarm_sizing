@@ -16,7 +16,7 @@ sys.stderr = open(errFile, 'w')
 
 class Particle:
     def __init__(self, minx, maxx, seed, initPosition=None, initCost = None):
-        self.sim = RadioSimulator.RadioSimulator(radioFile = '../Data/PowerMEMS_Sample_Data_em_20160707.csv')
+        self.sim = RadioSimulator.RadioSimulator(radioFile = '../Data/PowerMEMS_Sample_Data_em_20160928.csv')
         self.minx = minx
         self.maxx = maxx
         np.random.seed(seed)  # Set the seed for random number generation; ensures that this is set for the multiprocessing instance
@@ -131,7 +131,10 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
         minCost = min(costs)
         # Check whether the error has improved
         if minCost < best_swarm_cost:
-            print("Swarm Cost Improved!")
+            msg= ("Swarm Cost Improved to %0.1f on epoch %s !"%(minCost,epoch))
+            print(msg)
+            sys.stderr.write(msg+'\n')
+            sys.stderr.flush()
             best_swarm_cost = minCost
             minIdx = costs.index(minCost)
             best_swarm_pos = copy.copy(swarm[minIdx].position)
@@ -141,8 +144,9 @@ def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
                 swarm[i].best_swarm_pos = best_swarm_pos
 
         epoch += 1
-        if epoch % 5 == 0:
+        if epoch % 10 == 0:
             epochStr = "Epoch = %s with best error of %.1f at %s"%(str(epoch),best_swarm_cost, datetime.datetime.now())
+            print(epochStr)
             sys.stderr.write(epochStr+'\n')
             pickle.dump(swarm, open( "../Results/swarm.pkl", "wb" ))
     
@@ -155,11 +159,10 @@ max_epochs = 1000
 minx = np.array( [  1,   1 ,  0 ,   0, 0.2,  0 ,  0 ])
 maxx = np.array( [100,  100, 100, 100, 0.8, 2.6, 3.6])
 # Load a set of points with which to initialize some of the particles.  These will have coordinates in a Numpy array.
-gridSearchResults = pd.read_csv("../Results/gridSearchAllResults_2016-07-10_v2.csv", index_col=0)
-initPoints = gridSearchResults[gridSearchResults['cost']<float('inf')].sort_values(by='cost')
+gridSearchResults = pd.read_csv("../Results/gridSearchAllResults_2016-09-28_13_56.csv", index_col=0)
+initPoints = gridSearchResults.sort_values(by='cost',ascending=True)
 
-num_particles = 20  # Comment this out to use all points in initPoints
-num_particles = None
+num_particles = 300  # Comment this out to use all points in initPoints
 
 initVariables = initPoints[['TEGparallel','TEGserial','batts','caps','SOC','V_b','V_c']].values  # Get the values in the right order
 initCosts = initPoints['cost'].values
@@ -171,4 +174,5 @@ starttime = time.time()
 best_position = Solve(max_epochs, minx, maxx, initValues=initVariables, initCostList=initCosts, n= num_particles)
 
 finishStr = "Done execution in %.2f seconds with best solution %s \n"%(time.time()-starttime,best_position)
+print(finishStr)
 sys.stderr.write(finishStr+'\n')
