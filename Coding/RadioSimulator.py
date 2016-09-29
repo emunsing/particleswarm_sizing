@@ -149,7 +149,7 @@ class RadioSimulator:
             cost = initVariables['TEGserial']* initVariables['TEGparallel'] * TEGcost + \
                     capCost * initVariables['caps'] + battCost * initVariables['batts']
         else:
-            cost = (df.shape[0]-failStep) * 100
+            cost = (10 + df.shape[0]-failStep) * 100
             # cost = float('inf')
             
         return cost

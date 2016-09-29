@@ -5,7 +5,7 @@ import sys, os, time, copy
 import numpy as np
 import pandas as pd
 
-errFile = 'gridsearchErrorLog.txt'
+errFile = 'gridsearchErrorLog.log'
 
 try:
 	os.remove(errFile)
@@ -15,12 +15,12 @@ sys.stderr = open(errFile, 'w')
 
 ## Define the grid
 TEGserialSeries   = np.arange(1,50,5)
-TEGparallelSeries = np.arange(1,16,5)
-battSeries        = np.arange(1,16,3)
-capSeries         = np.arange(1,11,2)
+TEGparallelSeries = np.arange(1,30,5)
+battSeries        = np.arange(1,30,3)
+capSeries         = np.arange(1,30,3)
 SOCseries         = np.arange(0.2,0.81,0.2)
-V_bSeries         = np.arange(0, 1.9, 0.4)
-V_cSeries         = np.arange(1.8, 3.1, 0.4)
+V_bSeries         = np.arange(0, 1.9, 0.3)
+V_cSeries         = np.arange(1.8, 3.4, 0.3)
 
 # TEGserialSeries   = [25]
 # TEGparallelSeries = [5]
