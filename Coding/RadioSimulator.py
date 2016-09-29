@@ -143,23 +143,22 @@ class RadioSimulator:
         TEGcost  = 1
         capCost  = 1
         battCost = 1
-        penalty  = 0
+        timePenalty = 0
         cost = initVariables['TEGserial']*initVariables['TEGparallel']*TEGcost + \
                 capCost*initVariables['caps'] + battCost*initVariables['batts']
         
         # feasible = self.simulate(initVariables,stopOnError=False,returnDf=False)
         (feasible,df,failStep) = self.simulate(initVariables,stopOnError=True,returnDf=True)
 
-        if not(feasible):
-            # Want the penalty to include both a penalty for the number of time steps which failed, and a penalty for the deviation between initial and final states
-            dSOC = (initVariables['SOC'] - df.loc[failStep,'SOC'])/ self.constraints.loc['max','SOC']
-            dV_b = (initVariables['V_b'] - df.loc[failStep,'V_b'])/ self.constraints.loc['min','V']
-            dV_c = (initVariables['V_c'] - df.loc[failStep,'V_c'])/ self.constraints.loc['min','V']
-            deviationPenalty = ( abs(dSOC) + abs(dV_b) + abs(dV_c) ) * 10
+        # Want the penalty to include both a penalty for the number of time steps which failed, and a penalty for the deviation between initial and final states
+        dSOC = (initVariables['SOC'] - df.loc[failStep,'SOC'])/ self.constraints.loc['max','SOC']
+        dV_b = (initVariables['V_b'] - df.loc[failStep,'V_b'])/ self.constraints.loc['min','V']
+        dV_c = (initVariables['V_c'] - df.loc[failStep,'V_c'])/ self.constraints.loc['min','V']
+        deviationPenalty = ( abs(dSOC) + abs(dV_b) + abs(dV_c) ) * 100
+        if not feasible:
             timePenalty = (df.shape[0]-failStep) * 100
-            penalty = deviationPenalty + timePenalty
 
-        return cost + penalty
+        return cost +  deviationPenalty + timePenalty
         
     def simulate(self, initVariables=None,stopOnError=True,returnDf=False):
         #  expect initVariables as a dictionary with terms:
@@ -247,7 +246,7 @@ class RadioSimulator:
                 break
         
         if feasible:  # If we think the result is feasible, need to check whether the end state and start state are close to each other
-            tol = 0.05  # Relative tolerance for landing within the initial state. Note that this is done relative to the maximum for that constraint, not the 
+            tol = 0.01  # Relative tolerance for landing within the initial state. Note that this is done relative to the maximum for that constraint, not the 
             dSOC = (initVariables['SOC'] - df.loc[i,'SOC'])/self.constraints.loc['max','SOC']  # Each of these will be a scalar between 0-1, the proportion the system is off at the end
             dV_b = (initVariables['V_b'] - df.loc[i,'V_b'])/self.constraints.loc['min','V']
             dV_c = (initVariables['V_c'] - df.loc[i,'V_c'])/self.constraints.loc['min','V']

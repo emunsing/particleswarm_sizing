@@ -81,19 +81,25 @@ def stepForward(myParticle):
 
     return (myParticle.cost, myParticle)
         
-def Solve(max_epochs, minx, maxx, n=None, initValues=None, initCostList=None):
+def Solve(max_epochs, minx, maxx, swarmFile = None, n=None, initValues=None, initCostList=None):
     # max_epochs: Number of simulation epochs, i.e. flight time steps
     # n : Number of particles. If initial values are used, make sure n<=initValues
     # minx, maxx: Assuming that the simulation is in a hypercube defined by the range (minx, maxx) in each dimension
     # initValues: A Numpy array, with columns of position variables and rows of samples
     # initCostList: costs corresponding to the costs of each position
-    if n is None:  n = initValues.shape[0]
+    
+    if swarmFile is None:    
+        if n is None:  n = initValues.shape[0]
 
-    ## Create Swarm
-    if initValues is None:
-        swarm = [Particle(minx, maxx, i) for i in range(n)]
-    else: 
-        swarm = [Particle(minx, maxx, i, initValues[i], initCostList[i]) for i in range(n)]        
+        ## Create Swarm
+        if initValues is None:
+            swarm = [Particle(minx, maxx, i) for i in range(n)]
+        else: 
+            swarm = [Particle(minx, maxx, i, initValues[i], initCostList[i]) for i in range(n)]
+    else:
+        swarm = pickle.load(open(swarmFile,'rb'))
+        if n is None: n = len(swarm)
+        swarm = swarm[0:n]
             
     ## Identify the best cost in the initial batch
     best_swarm_cost = float('inf') # High initial value 
@@ -168,7 +174,7 @@ maxx = np.array( [100, 100, 100, 100, 0.8, 1.6, 3.6])
 gridSearchResults = pd.read_csv("../Results/gridSearchBestResultsSparse_2016-09-28.csv", index_col=0)
 initPoints = gridSearchResults.sort_values(by='cost',ascending=True)
 
-num_particles = 300  # Comment this out to use all points in initPoints
+num_particles = 30  # Comment this out to use all points in initPoints
 
 initVariables = initPoints[['TEGparallel','TEGserial','batts','caps','SOC','V_b','V_c']].values  # Get the values in the right order
 initCosts = initPoints['cost'].values
@@ -177,7 +183,9 @@ sys.stderr.write("Started at %s \n"%datetime.datetime.now())
 
 sys.stdout.flush()
 starttime = time.time()
-best_position = Solve(max_epochs, minx, maxx, initValues=initVariables, initCostList=initCosts, n= num_particles)
+# best_position = Solve(max_epochs, minx, maxx, initValues=initVariables, initCostList=initCosts, n= num_particles)
+best_position = Solve(max_epochs, minx, maxx, swarmFile = '../Results/swarm.pkl', n = num_particles)
+
 
 finishStr = "Done execution in %.2f seconds with best solution %s \n"%(time.time()-starttime,best_position)
 print(finishStr)
