@@ -243,6 +243,7 @@ class RadioSimulator:
                 failStep = i
 
             if ( (not feasible) & stopOnError ):  # If it is not feasible and we are not ignoring constraints, 
+
                 break
         
         if feasible:  # If we think the result is feasible, need to check whether the end state and start state are close to each other
@@ -252,7 +253,10 @@ class RadioSimulator:
             dV_c = (initVariables['V_c'] - df.loc[i,'V_c'])/self.constraints.loc['min','V']
 
             if (abs(dSOC) > tol) | (abs(dV_b) > tol) | (abs(dV_c) > tol):   # if we violate the tolerance for ending at the same initial conditions as we started, 
+                
                 feasible = False
+                print("Failed on tolerance")
+                sys.stdout.flush()
                 failStep = i       # This will be infeasible, but will be noted as failing on the last step
 
         if returnDf:
