@@ -120,7 +120,7 @@ def Solve(max_epochs, minx, maxx, swarmFile = None, n=None, initValues=None, ini
     if multiprocessing.cpu_count() <= 10:
         myPool = Pool()
     else:
-        myPool = Pool(10)  # Don't overrun bGrid2
+        myPool = Pool(12)  # Don't overrun bGrid2
 
     epoch = 0
     while epoch < max_epochs:
@@ -143,13 +143,13 @@ def Solve(max_epochs, minx, maxx, swarmFile = None, n=None, initValues=None, ini
         minCost = min(costs)
         # Check whether the error has improved
         if minCost < best_swarm_cost:
-            msg= ("Swarm Cost Improved to %0.1f on epoch %s !"%(minCost,epoch))
-            print(msg)
-            sys.stderr.write(msg+'\n')
-            sys.stderr.flush()
             best_swarm_cost = minCost
             minIdx = costs.index(minCost)
             best_swarm_pos = copy.copy(swarm[minIdx].position)
+            msg= ("Swarm Cost Improved to %0.2f on epoch %s at %s!"%(best_swarm_cost,epoch,str(best_swarm_pos)))
+            print(msg)
+            sys.stderr.write(msg+'\n')
+            sys.stderr.flush()
             # If the error has improved, update each particle with that information.
             for i in range(n):
                 swarm[i].best_swarm_cost = best_swarm_cost
@@ -165,16 +165,16 @@ def Solve(max_epochs, minx, maxx, swarmFile = None, n=None, initValues=None, ini
     return best_swarm_pos
 
 ##### MAIN EXECUTION FLOW ####
-max_epochs = 1000
+max_epochs = 500
 
 #  x =           [  p,  s ,  b ,   c, SOC, V_b, V_c]
-minx = np.array( [0.1, 0.1,  0 ,   0, 0.2,  0 ,  0 ])
+minx = np.array( [0.01, 20,  0 ,   0, 0.2,  0 ,  0 ])
 maxx = np.array( [100, 100, 100, 100, 0.8, 1.6, 3.6])
 # Load a set of points with which to initialize some of the particles.  These will have coordinates in a Numpy array.
 gridSearchResults = pd.read_csv("../Results/gridSearchBestResultsSparse_2016-09-28.csv", index_col=0)
 initPoints = gridSearchResults.sort_values(by='cost',ascending=True)
 
-num_particles = 30  # Comment this out to use all points in initPoints
+num_particles = 100  # Comment this out to use all points in initPoints
 
 initVariables = initPoints[['TEGparallel','TEGserial','batts','caps','SOC','V_b','V_c']].values  # Get the values in the right order
 initCosts = initPoints['cost'].values
@@ -183,9 +183,8 @@ sys.stderr.write("Started at %s \n"%datetime.datetime.now())
 
 sys.stdout.flush()
 starttime = time.time()
-# best_position = Solve(max_epochs, minx, maxx, initValues=initVariables, initCostList=initCosts, n= num_particles)
-best_position = Solve(max_epochs, minx, maxx, swarmFile = '../Results/swarm.pkl', n = num_particles)
-
+best_position = Solve(max_epochs, minx, maxx, initValues=initVariables, initCostList=initCosts, n= num_particles)
+#best_position = Solve(max_epochs, minx, maxx, swarmFile = '../Results/swarm_new.pkl', n = num_particles)
 
 finishStr = "Done execution in %.2f seconds with best solution %s \n"%(time.time()-starttime,best_position)
 print(finishStr)

@@ -154,7 +154,7 @@ class RadioSimulator:
         dSOC = (initVariables['SOC'] - df.loc[failStep,'SOC'])/ self.constraints.loc['max','SOC']
         dV_b = (initVariables['V_b'] - df.loc[failStep,'V_b'])/ self.constraints.loc['min','V']
         dV_c = (initVariables['V_c'] - df.loc[failStep,'V_c'])/ self.constraints.loc['min','V']
-        deviationPenalty = ( abs(dSOC) + abs(dV_b) + abs(dV_c) ) * 100
+        deviationPenalty = ( abs(dSOC) + abs(dV_b) + abs(dV_c) ) * 100000
         if not feasible:
             timePenalty = (df.shape[0]-failStep) * 100
 
